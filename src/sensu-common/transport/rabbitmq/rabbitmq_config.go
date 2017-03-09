@@ -26,14 +26,15 @@ type TransportConfig struct {
 }
 
 func (c *TransportConfig) GetURI() string {
-	return fmt.Sprintf(
-		"amqp://%s:%s@%s:%s/%s",
-		c.User,
-		c.Password,
-		c.Host,
-		c.Port.String(),
-		url.QueryEscape(c.Vhost),
-	)
+
+	scheme := "amqp"
+
+	if c.Ssl.CertChainFile != "" && c.Ssl.PrivateKeyFile != "" {
+		scheme = "amqps"
+	}
+
+	return fmt.Sprintf("%s://%s:%s@%s:%s/%s", scheme, c.User, c.Password,
+		c.Host, c.Port.String(), url.QueryEscape(c.Vhost))
 }
 
 func NewTransportConfig(uri string) (*TransportConfig, error) {
@@ -43,7 +44,8 @@ func NewTransportConfig(uri string) (*TransportConfig, error) {
 	}
 
 	if !strings.Contains(uriComponents.Host, ":") {
-		return nil, fmt.Errorf("Failed to determine the port for host: %s", uriComponents.Host)
+		return nil, fmt.Errorf("Failed to determine the port for host: %s",
+			uriComponents.Host)
 	}
 
 	host, port, err := net.SplitHostPort(uriComponents.Host)
